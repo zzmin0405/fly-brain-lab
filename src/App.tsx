@@ -173,7 +173,7 @@ export default function App() {
   return (
     <main>
       <header>
-        <a href="/">FLY / BRAIN LAB</a>
+        <a href="/">BRAIN / DEFENSE</a>
         <span>실험 002 · 랜덤 미로</span>
       </header>
       <section className="intro">

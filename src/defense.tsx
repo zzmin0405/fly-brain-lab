@@ -51,7 +51,7 @@ export function DefenseReplay() {
     <main>
       <header>
         <a href="/defense.html">BRAIN / DEFENSE</a>
-        <a href="/">미로 실험실</a>
+        <a href="/maze.html">미로 실험실 →</a>
       </header>
       <section className="intro">
         <p className="eyebrow">FULL CONNECTOME / TRAINING REPLAY</p>
