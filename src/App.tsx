@@ -26,6 +26,7 @@ type Result = {
   status: string
   weights: Weights
   trace: number[]
+  score: number
 }
 const emptyStats = {
   steps: 0,
@@ -44,6 +45,15 @@ export default function App() {
     [showOdor, setShowOdor] = useState(false)
   const [records, setRecords] = useState<Result[]>([]),
     [stats, setStats] = useState(emptyStats)
+  const [leaderboard, setLeaderboard] = useState<Result[]>(() => {
+    try {
+      return JSON.parse(
+        localStorage.getItem('fly-brain-leaderboard') ?? '[]',
+      ) as Result[]
+    } catch {
+      return []
+    }
+  })
   const canvas = useRef<HTMLCanvasElement>(null)
   const live = useRef({ weights, paused, speed, showOdor, records })
   useEffect(() => {
@@ -80,10 +90,31 @@ export default function App() {
               status: experiment.status,
               weights: { ...config.weights },
               trace: [...experiment.trace],
+              score:
+                experiment.status === 'success'
+                  ? Math.max(1, 10000 - experiment.steps * 10)
+                  : 0,
             },
             ...previous,
           ].slice(0, 8),
         )
+        if (experiment.status === 'success')
+          setLeaderboard((previous) => {
+            const entry = {
+              seed,
+              size,
+              steps: experiment.steps,
+              status: experiment.status,
+              weights: { ...config.weights },
+              trace: [...experiment.trace],
+              score: Math.max(1, 10000 - experiment.steps * 10),
+            }
+            const next = [...previous, entry]
+              .sort((a, b) => b.score - a.score)
+              .slice(0, 20)
+            localStorage.setItem('fly-brain-leaderboard', JSON.stringify(next))
+            return next
+          })
       }
       drawMaze(
         context,
@@ -133,6 +164,50 @@ export default function App() {
           매번 다른 갈림길.
         </h1>
         <p>반응을 조절하고, 같은 미로에서 달라지는 선택을 관찰하세요.</p>
+      </section>
+      <section className="history leaderboard">
+        <h2>
+          시드 랭킹{' '}
+          <span>
+            {seed} · {size} × {size} · 이 브라우저 기록
+          </span>
+        </h2>
+        {leaderboard.filter(
+          (entry) => entry.seed === seed && entry.size === size,
+        ).length ? (
+          <table>
+            <thead>
+              <tr>
+                <th>순위</th>
+                <th>점수</th>
+                <th>이동</th>
+                <th>가중치 · 냄새 / 탐색 / 유지</th>
+              </tr>
+            </thead>
+            <tbody>
+              {leaderboard
+                .filter((entry) => entry.seed === seed && entry.size === size)
+                .map((entry, index) => (
+                  <tr key={`${entry.seed}-${entry.score}-${index}`}>
+                    <td>#{index + 1}</td>
+                    <td>
+                      <b className="score">{entry.score.toLocaleString()}</b>
+                    </td>
+                    <td>{entry.steps}</td>
+                    <td>
+                      {entry.weights.odor} / {entry.weights.explore} /{' '}
+                      {entry.weights.persistence}
+                    </td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        ) : (
+          <p>
+            이 시드에서 성공한 기록이 아직 없습니다. 같은 시드를 공유하고 더
+            높은 점수에 도전하세요.
+          </p>
+        )}
       </section>
       <div className="toolbar">
         <button className="primary" onClick={newMaze}>

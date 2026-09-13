@@ -332,3 +332,9 @@ input[aria-invalid='true'] {
     flex-wrap: wrap;
   }
 }
+.score {
+  color: #bafa68;
+}
+.leaderboard {
+  margin-top: 18px;
+}
