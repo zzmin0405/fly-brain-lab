@@ -170,3 +170,165 @@ footer {
     gap: 20px;
   }
 }
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 20px;
+}
+.toolbar label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 13px;
+}
+.toolbar form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+.toolbar input {
+  width: 115px;
+  margin: 0;
+  padding: 9px;
+}
+.toolbar input,
+select {
+  background: #1d2b2c;
+  color: #e9efeb;
+  border: 1px solid #435451;
+  border-radius: 6px;
+  font: inherit;
+}
+select {
+  padding: 9px;
+}
+.primary {
+  background: #bafa68;
+  color: #17201a;
+  border-color: #bafa68;
+  font-weight: 700;
+}
+.primary:hover {
+  background: #a2de54;
+}
+button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.intro {
+  padding-top: 28px;
+}
+.intro h1 {
+  font-size: 40px;
+}
+.arena canvas {
+  max-width: 660px;
+  margin: auto;
+}
+.legend {
+  flex-wrap: wrap;
+  align-items: center;
+}
+.legend label {
+  margin: 0;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.legend input {
+  width: auto;
+  margin: 0;
+}
+.metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-block: 1px solid #435451;
+  margin-top: 22px;
+  padding: 20px 0;
+  gap: 20px;
+}
+.metrics strong {
+  display: block;
+  font-size: 27px;
+  color: #bafa68;
+}
+small {
+  font-size: 11px;
+  color: #9aaea9;
+}
+.signals {
+  display: flex;
+  gap: 12px;
+}
+.signals div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+.signals meter {
+  width: 100%;
+}
+.history {
+  margin-top: 30px;
+  border: 1px solid #304043;
+  border-radius: 14px;
+  padding: 22px;
+}
+.history h2 {
+  margin-top: 0;
+  font-size: 18px;
+}
+.history h2 span {
+  font-size: 12px;
+  color: #9aaea9;
+  font-weight: 400;
+  margin-left: 14px;
+}
+.history p {
+  font-size: 13px;
+  color: #9aaea9;
+}
+.table-scroll {
+  overflow: auto;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  text-align: left;
+}
+th,
+td {
+  padding: 12px;
+  border-bottom: 1px solid #304043;
+  white-space: nowrap;
+}
+th {
+  color: #9aaea9;
+}
+footer a {
+  color: #bafa68;
+}
+input[aria-invalid='true'] {
+  border-color: #ef8059;
+}
+@media (max-width: 850px) {
+  .toolbar form {
+    margin-left: 0;
+  }
+  .intro h1 {
+    font-size: 32px;
+  }
+  .lab {
+    grid-template-columns: 1fr;
+  }
+  footer {
+    flex-wrap: wrap;
+  }
+}
