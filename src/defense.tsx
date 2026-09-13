@@ -28,6 +28,11 @@ const trackPoints = [
   [485, 248], [540, 105], [680, 105], [735, 220], [870, 220],
 ] as const
 const trackPath = `M ${trackPoints.map(([x, y]) => `${x} ${y}`).join(' L ')}`
+const towerMeta = [
+  { name: '블라스트 포탑', role: '범위 폭발', damage: '42', range: '105', rate: '1.2s', color: '#bafa68' },
+  { name: '아이리스 레일', role: '단일 저격', damage: '96', range: '150', rate: '2.4s', color: '#aaa7ee' },
+  { name: '펄스 앵커', role: '감속 제어', damage: '18', range: '78', rate: '0.8s', color: '#75dce5' },
+]
 function trackPosition(progress: number) {
   const segments = trackPoints.slice(1).map((point, i) => {
     const [x, y] = trackPoints[i]
@@ -100,6 +105,11 @@ export function DefenseReplay() {
             <span>
               검증 시드 2000 · 웨이브 {frame.wave}/10 · 틱 {frame.tick}/160
             </span>
+          </div>
+          <div className="wave-strip">
+            <span className="wave-strip-label">WAVE {String(frame.wave).padStart(2, '0')}</span>
+            <div className="wave-progress"><i style={{ width: `${Math.min(100, (frame.tick / 160) * 100)}%` }} /></div>
+            <span className="wave-strip-meta">다음 웨이브까지 {Math.max(0, 160 - frame.tick)}틱</span>
           </div>
           <div className="arena game-arena">
             <div className="bar game-hud">
@@ -187,6 +197,15 @@ export function DefenseReplay() {
                   : `${frame.action - 8}번 슬롯 강화`}
             </div>
           </div>
+          <section className="tower-deck" aria-label="포탑 도감">
+            <div className="tower-deck-heading"><span>DEFENSE LOADOUT</span><small>자동 배치된 포탑의 전투 스펙</small></div>
+            <div className="tower-cards">
+              {towerMeta.map((tower, i) => <article className="tower-card" key={tower.name} style={{ '--tower-color': tower.color } as React.CSSProperties}>
+                <div className="tower-card-top"><span className="tower-icon">{i === 0 ? '◆' : i === 1 ? '╋' : '✦'}</span><div><strong>{tower.name}</strong><small>{tower.role}</small></div><em>{frame.towers[i] ? `LV ${frame.towers[i]}` : 'EMPTY'}</em></div>
+                <div className="tower-metrics"><span><b>{tower.damage}</b> DMG</span><span><b>{tower.range}</b> RNG</span><span><b>{tower.rate}</b> CD</span></div>
+              </article>)}
+            </div>
+          </section>
           <section className="history game-stats">
             <h2>실제 실행 결과</h2>
             <p>

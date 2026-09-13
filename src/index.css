@@ -416,6 +416,22 @@ input[aria-invalid='true'] {
   color: #b8cac1;
   font-size: 12px;
 }
+.wave-strip {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 16px;
+  border: 1px solid #304a48;
+  border-radius: 10px;
+  background: #0c1a1e;
+  color: #9db3ac;
+  font-size: 11px;
+  letter-spacing: .08em;
+}
+.wave-strip-label { color: #bafa68; font-weight: 800; }
+.wave-progress { flex: 1; height: 5px; overflow: hidden; border-radius: 99px; background: #263c3d; }
+.wave-progress i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #bafa68, #75dce5); transition: width .2s linear; }
+.wave-strip-meta { letter-spacing: 0; }
 .game-arena {
   border-radius: 20px;
   background: linear-gradient(160deg, #122628, #0b151b);
@@ -458,6 +474,19 @@ input[aria-invalid='true'] {
   border-bottom: 0;
   font-size: 12px;
 }
+.tower-deck { margin-top: 14px; padding: 18px; border: 1px solid #304a48; border-radius: 14px; background: #0d1c20e8; }
+.tower-deck-heading { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 12px; color: #dce8e0; font-size: 11px; letter-spacing: .12em; font-weight: 800; }
+.tower-deck-heading small { color: #7d9690; letter-spacing: 0; font-weight: 400; }
+.tower-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.tower-card { padding: 13px; border: 1px solid color-mix(in srgb, var(--tower-color) 35%, #304a48); border-radius: 10px; background: linear-gradient(145deg, #172a2e, #0e1a1e); }
+.tower-card-top { display: flex; align-items: center; gap: 10px; }
+.tower-icon { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; color: var(--tower-color); background: color-mix(in srgb, var(--tower-color) 14%, transparent); font-size: 17px; }
+.tower-card strong, .tower-card small { display: block; }
+.tower-card strong { color: #eff5ef; font-size: 12px; }
+.tower-card small { margin-top: 3px; color: #89a29a; font-size: 10px; }
+.tower-card em { margin-left: auto; color: var(--tower-color); font-size: 10px; font-style: normal; font-weight: 800; }
+.tower-metrics { display: flex; justify-content: space-between; margin-top: 14px; padding-top: 10px; border-top: 1px solid #2a4242; color: #78918b; font-size: 9px; }
+.tower-metrics b { color: #dce8e0; font-size: 12px; }
 .game-stats {
   margin-top: 20px;
   background: #102023d9;
@@ -484,4 +513,6 @@ input[aria-invalid='true'] {
   .game-arena svg {
     min-height: 250px;
   }
+  .tower-cards { grid-template-columns: 1fr; }
+  .wave-strip-meta { display: none; }
 }
