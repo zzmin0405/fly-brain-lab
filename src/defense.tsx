@@ -48,12 +48,12 @@ export function DefenseReplay() {
   }, [playing, replay])
   const frame = replay?.frames[index]
   return (
-    <main>
-      <header>
+    <main className="game-shell">
+      <header className="game-nav">
         <a href="/defense.html">BRAIN / DEFENSE</a>
         <a href="/maze.html">미로 실험실 →</a>
       </header>
-      <section className="intro">
+      <section className="intro game-hero">
         <p className="eyebrow">FULL CONNECTOME / TRAINING REPLAY</p>
         <h1>
           실제 연결망.
@@ -67,7 +67,7 @@ export function DefenseReplay() {
       {error && <p role="alert">{error}</p>}
       {replay && frame && (
         <>
-          <div className="toolbar">
+          <div className="toolbar game-toolbar">
             <button className="primary" onClick={() => setPlaying(!playing)}>
               {playing ? '일시 정지' : '재생'}
             </button>
@@ -83,8 +83,8 @@ export function DefenseReplay() {
               검증 시드 2000 · 웨이브 {frame.wave}/10 · 틱 {frame.tick}/160
             </span>
           </div>
-          <div className="arena">
-            <div className="bar">
+          <div className="arena game-arena">
+            <div className="bar game-hud">
               <span>♥ {frame.lives} 생명</span>
               <span>◈ {frame.gold} 골드</span>
               <span>{frame.kills} 처치</span>
@@ -157,7 +157,7 @@ export function DefenseReplay() {
                 기지
               </text>
             </svg>
-            <div className="bar">
+            <div className="bar game-decision">
               결정:{' '}
               {!frame.action
                 ? '대기'
@@ -166,7 +166,7 @@ export function DefenseReplay() {
                   : `${frame.action - 8}번 슬롯 강화`}
             </div>
           </div>
-          <section className="history">
+          <section className="history game-stats">
             <h2>실제 실행 결과</h2>
             <p>
               뉴런 {replay.report.manifest.nodes.toLocaleString()}개 · 연결{' '}

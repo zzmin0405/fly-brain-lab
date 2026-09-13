@@ -359,3 +359,129 @@ input[aria-invalid='true'] {
   margin-top: 18px;
   background: #111c20cc;
 }
+
+/* 타워 디펜스 전용 HUD */
+.game-shell {
+  max-width: 1440px;
+  min-height: 100vh;
+  padding: 22px 34px 44px;
+}
+.game-shell::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.18;
+  background-image:
+    linear-gradient(#bafa6810 1px, transparent 1px),
+    linear-gradient(90deg, #bafa6810 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: linear-gradient(to bottom, #000, transparent 82%);
+}
+.game-nav {
+  position: relative;
+  z-index: 1;
+  padding: 10px 0 18px;
+  border-bottom: 1px solid #405b57;
+}
+.game-nav a:last-child {
+  color: #dce8e0;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+}
+.game-hero {
+  position: relative;
+  padding: 44px 0 24px;
+}
+.game-hero h1 {
+  font-size: clamp(42px, 6vw, 78px);
+  line-height: 1.06;
+  letter-spacing: -4px;
+  margin: 12px 0 18px;
+}
+.game-hero > p:last-child {
+  max-width: 550px;
+  font-size: 15px;
+}
+.game-toolbar {
+  padding: 12px 16px;
+  margin-bottom: 14px;
+  border: 1px solid #415d58;
+  border-radius: 13px;
+  background: #152629d9;
+  box-shadow: 0 12px 32px #0005;
+}
+.game-toolbar > span {
+  margin-left: auto;
+  color: #b8cac1;
+  font-size: 12px;
+}
+.game-arena {
+  border-radius: 20px;
+  background: linear-gradient(160deg, #122628, #0b151b);
+  box-shadow:
+    0 28px 80px #0008,
+    0 0 0 1px #9ec8b522;
+}
+.game-hud {
+  min-height: 66px;
+  padding: 14px 20px;
+  background: #0a151bd9;
+  font-size: 15px;
+  font-weight: 700;
+}
+.game-hud span {
+  padding: 8px 14px;
+  border: 1px solid #39524f;
+  border-radius: 8px;
+  background: #ffffff05;
+}
+.game-hud span:first-child {
+  color: #ff9a87;
+}
+.game-hud span:nth-child(2) {
+  color: #f7dc7b;
+}
+.game-arena svg {
+  background: radial-gradient(ellipse at center, #1d4542 0%, #102326 75%);
+  min-height: 370px;
+}
+.game-arena svg path:first-child {
+  filter: drop-shadow(0 8px 10px #0008);
+  stroke: #365856;
+}
+.game-decision {
+  justify-content: flex-start;
+  min-height: 48px;
+  color: #bafa68;
+  border-top: 1px solid #36524f;
+  border-bottom: 0;
+  font-size: 12px;
+}
+.game-stats {
+  margin-top: 20px;
+  background: #102023d9;
+}
+.game-stats h2 {
+  color: #f1f6ef;
+}
+@media (max-width: 700px) {
+  .game-shell {
+    padding: 16px;
+  }
+  .game-toolbar > span {
+    width: 100%;
+    margin: 4px 0 0;
+  }
+  .game-hud {
+    gap: 5px;
+    padding: 10px;
+  }
+  .game-hud span {
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+  .game-arena svg {
+    min-height: 250px;
+  }
+}
