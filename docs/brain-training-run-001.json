@@ -1,0 +1,106 @@
+{
+  "manifest": {
+    "dataset": "FlyWire v783 / Shiu model distribution",
+    "nodes": 138639,
+    "source_rows": 15091983,
+    "coalesced_edges": 15091983,
+    "zero_weight_rows": 0,
+    "source_repo": "https://github.com/philshiu/Drosophila_brain_model",
+    "source_commit": "91bdd1e7dcf193f3e7ca5a8933497fcef63b7960",
+    "files": {
+      "Completeness_783.csv": "52b0ac6094cd32c546f8d4c341e094376f48f4e791f8db9b166de5dff8199ea4",
+      "Connectivity_783.parquet": "efeb23fb99098e9c390f6869969b2a121a2ee92c833cfc45ecb2c1d8e1af0347"
+    },
+    "model": "3-step rate graph; trainable neuron gains + artificial encoder/decoder; NOT Shiu LIF",
+    "data_license": "FlyWire CC BY-NC 4.0; upstream code MIT"
+  },
+  "training_seeds": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19
+  ],
+  "validation_seeds": [
+    1000,
+    1001
+  ],
+  "evaluation_seeds": [
+    2000
+  ],
+  "device": "cpu",
+  "steps": 40,
+  "loss_history": [
+    0.5429630875587463,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    4.04196834564209,
+    1.3077341318130493,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0272936820983887,
+    3.5077006816864014,
+    5.980098247528076,
+    0.0,
+    0.0,
+    1.7713013887405396,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    8.87819766998291,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.00168440246488899,
+    0.0,
+    3.9476122856140137,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "changed_neuron_gains": 138005,
+  "validation_teacher_agreement": 0.934375,
+  "before": {
+    "scores": [
+      920
+    ],
+    "mean_score": 920.0
+  },
+  "after": {
+    "scores": [
+      920
+    ],
+    "mean_score": 920.0
+  },
+  "elapsed_seconds": 101.8646080493927,
+  "note": "소규모 행동 모방학습 실험. 생물학적 재현 및 일반화 성능 검증이 아님."
+}
