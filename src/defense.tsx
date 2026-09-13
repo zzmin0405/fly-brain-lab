@@ -23,6 +23,24 @@ type Replay = {
     validation_teacher_agreement: number
   }
 }
+const trackPoints = [
+  [30, 170], [130, 170], [180, 92], [300, 92], [350, 248],
+  [485, 248], [540, 105], [680, 105], [735, 220], [870, 220],
+] as const
+const trackPath = `M ${trackPoints.map(([x, y]) => `${x} ${y}`).join(' L ')}`
+function trackPosition(progress: number) {
+  const segments = trackPoints.slice(1).map((point, i) => {
+    const [x, y] = trackPoints[i]
+    return { x, y, dx: point[0] - x, dy: point[1] - y, length: Math.hypot(point[0] - x, point[1] - y) }
+  })
+  const total = segments.reduce((sum, segment) => sum + segment.length, 0)
+  let distance = Math.max(0, Math.min(1, progress)) * total
+  for (const segment of segments) {
+    if (distance <= segment.length) return [segment.x + segment.dx * (distance / segment.length), segment.y + segment.dy * (distance / segment.length)]
+    distance -= segment.length
+  }
+  return trackPoints[trackPoints.length - 1]
+}
 export function DefenseReplay() {
   const [replay, setReplay] = useState<Replay | null>(null)
   const [error, setError] = useState('')
@@ -102,9 +120,9 @@ export function DefenseReplay() {
                 </linearGradient>
                 <filter id="softGlow"><feGaussianBlur stdDeviation="4" result="blur" /><feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
               </defs>
-              <path d="M30 170 H870" stroke="#57716d" strokeWidth="44" />
+              <path d={trackPath} fill="none" stroke="#57716d" strokeWidth="44" strokeLinecap="round" strokeLinejoin="round" />
               <path
-                d="M30 170 H870"
+                d={trackPath}
                 stroke="#bafa6844"
                 strokeWidth="2"
                 strokeDasharray="8 8"
@@ -114,6 +132,7 @@ export function DefenseReplay() {
                   key={i}
                   transform={`translate(${30 + ((i + 0.5) / 8) * 840},${i % 2 ? 245 : 95})`}
                 >
+                  <circle r={frame.types[i] === 0 ? 105 : frame.types[i] === 1 ? 150 : 78} fill={frame.types[i] === 1 ? '#aaa7ee12' : frame.types[i] === 2 ? '#75dce512' : '#bafa6810'} stroke={frame.types[i] === 1 ? '#aaa7ee55' : frame.types[i] === 2 ? '#75dce555' : '#bafa6855'} strokeDasharray="5 7" />
                   <rect x="-27" y="-27" width="54" height="54" rx="14" fill="#15272b" stroke="#4d6b67" strokeWidth="2" />
                   {level ? <>{frame.types[i] === 0 && <><path d="M-15 12 L-10 -12 L10 -12 L15 12 Z" fill="url(#towerGlow)" /><path d="M0 -12 V-25" stroke="#dff9b0" strokeWidth="5" strokeLinecap="round" /></>}{frame.types[i] === 1 && <><rect x="-12" y="-13" width="24" height="28" rx="4" fill="#aaa7ee" /><path d="M-12 -9 H12 M-12 0 H12" stroke="#eeeaff" strokeWidth="3" /></>}{frame.types[i] === 2 && <><circle r="14" fill="#75dce5" /><path d="M-19 0 H19 M0 -19 V19" stroke="#d7fbff" strokeWidth="3" /></>}</> : <text textAnchor="middle" y="6" fill="#67827b" fontSize="25">+</text>}
                   {level > 1 && <circle r="20" fill="none" stroke="#bafa68" strokeWidth="2" strokeDasharray="3 5" opacity=".7" filter="url(#softGlow)" />}
@@ -138,7 +157,7 @@ export function DefenseReplay() {
               {frame.enemies.map((enemy, i) => (
                 <g
                   key={i}
-                  transform={`translate(${30 + enemy.position * 840},170)`}
+                  transform={`translate(${trackPosition(enemy.position)[0]},${trackPosition(enemy.position)[1]})`}
                 >
                   <rect x="-13" y="-13" width="26" height="26" rx="8" fill={i % 3 === 0 ? '#ef8059' : i % 3 === 1 ? '#e7a45e' : '#d96d92'} stroke="#ffd0a8" strokeWidth="2" transform={`rotate(${i * 17})`} />
                   <rect x="-15" y="-21" width="30" height="4" rx="2" fill="#26383a" /><rect x="-15" y="-21" width={`${Math.max(2, Math.min(30, enemy.hp / 30 * 30))}`} height="4" rx="2" fill="#ef8059" />
