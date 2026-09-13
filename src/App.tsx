@@ -18,6 +18,17 @@ const controls: { key: keyof Weights; name: string; description: string }[] = [
     name: '방향 유지',
     description: '현재 이동 방향을 계속 유지',
   },
+  {
+    key: 'caution',
+    name: '반복 회피',
+    description: '이미 간 길을 피하는 억제 회로',
+  },
+  {
+    key: 'memory',
+    name: '기억 유지',
+    description: '방문 흔적이 선택에 남는 정도',
+  },
+  { key: 'noise', name: '신경 잡음', description: '선택에 섞이는 변동성' },
 ]
 type Result = {
   seed: number
@@ -196,7 +207,8 @@ export default function App() {
                     <td>{entry.steps}</td>
                     <td>
                       {entry.weights.odor} / {entry.weights.explore} /{' '}
-                      {entry.weights.persistence}
+                      {entry.weights.persistence} / {entry.weights.caution} /{' '}
+                      {entry.weights.memory} / {entry.weights.noise}
                     </td>
                   </tr>
                 ))}
@@ -290,7 +302,7 @@ export default function App() {
         <aside>
           <p className="eyebrow">CONTROLLER / DEMO</p>
           <h2>행동을 조율하세요</h2>
-          <p>주변 통로의 감각만으로 다음 방향을 선택합니다.</p>
+          <p>감각·기억·억제·잡음 회로의 균형으로 다음 방향을 선택합니다.</p>
           {controls.map((control) => (
             <label key={control.key}>
               <span>
@@ -384,7 +396,8 @@ export default function App() {
                     <td>{record.steps}</td>
                     <td>
                       {record.weights.odor} / {record.weights.explore} /{' '}
-                      {record.weights.persistence}
+                      {record.weights.persistence} / {record.weights.caution} /{' '}
+                      {record.weights.memory} / {record.weights.noise}
                     </td>
                   </tr>
                 ))}

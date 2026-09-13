@@ -1,5 +1,19 @@
-export type Weights = { odor: number; explore: number; persistence: number }
-export const defaults: Weights = { odor: 60, explore: 65, persistence: 35 }
+export type Weights = {
+  odor: number
+  explore: number
+  persistence: number
+  caution: number
+  memory: number
+  noise: number
+}
+export const defaults: Weights = {
+  odor: 60,
+  explore: 65,
+  persistence: 35,
+  caution: 45,
+  memory: 55,
+  noise: 12,
+}
 export const directions = [
   [0, -1],
   [1, 0],
@@ -102,12 +116,18 @@ export class DemoController implements Controller {
     this.activity = input.open.map((open, direction) => {
       if (!open) return 0
       const smell = input.odor[direction] / maximum
-      const novelty = 1 / (1 + input.familiarity[direction])
+      const novelty =
+        1 / (1 + input.familiarity[direction] * (weights.memory / 50))
       const drive =
         (smell * weights.odor) / 100 +
         (novelty * weights.explore) / 100 +
-        (direction === input.heading ? weights.persistence / 100 : 0)
-      return this.activity[direction] * 0.2 + drive + this.rng() * 0.3
+        (direction === input.heading ? weights.persistence / 100 : 0) -
+        (input.familiarity[direction] * weights.caution) / 500
+      return (
+        this.activity[direction] * 0.2 +
+        drive +
+        this.rng() * (weights.noise / 100)
+      )
     })
     return {
       direction: this.activity.indexOf(Math.max(...this.activity)),
