@@ -78,17 +78,22 @@ export default function App() {
       last = 0,
       elapsed = 0,
       saved = false,
-      reported = -1
+      reported = -1,
+      lastReportedAt = 0
     const render = (now: number) => {
       const config = live.current
       const dt = last ? Math.min((now - last) / 1000, 0.1) : 0
       last = now
       if (!config.paused && experiment.status === 'running') {
         elapsed += dt * config.speed
-        while (elapsed >= 1 && experiment.status === 'running') {
+        // 한 프레임에 너무 많은 시뮬레이션 틱이 몰리지 않게 한다.
+        let ticks = 0
+        while (elapsed >= 1 && experiment.status === 'running' && ticks < 4) {
           experiment.step(config.weights)
           elapsed--
+          ticks++
         }
+        if (ticks === 4) elapsed = Math.min(elapsed, 1)
       }
       if (!saved && experiment.status !== 'running') {
         saved = true
@@ -135,8 +140,12 @@ export default function App() {
           (record) => record.seed === seed && record.size === size,
         )?.trace,
       )
-      if (reported !== experiment.steps) {
+      if (
+        reported !== experiment.steps &&
+        (now - lastReportedAt > 100 || experiment.status !== 'running')
+      ) {
         reported = experiment.steps
+        lastReportedAt = now
         setStats({
           steps: experiment.steps,
           visited: experiment.visits.filter(Boolean).length,
