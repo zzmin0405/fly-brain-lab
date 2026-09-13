@@ -95,6 +95,13 @@ export function DefenseReplay() {
               aria-label="전체 연결망 모델의 타워 디펜스 플레이 리플레이"
               style={{ width: '100%', display: 'block' }}
             >
+              <defs>
+                <linearGradient id="towerGlow" x1="0" x2="1">
+                  <stop offset="0" stopColor="#bafa68" />
+                  <stop offset="1" stopColor="#4d9c79" />
+                </linearGradient>
+                <filter id="softGlow"><feGaussianBlur stdDeviation="4" result="blur" /><feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
+              </defs>
               <path d="M30 170 H870" stroke="#57716d" strokeWidth="44" />
               <path
                 d="M30 170 H870"
@@ -107,22 +114,16 @@ export function DefenseReplay() {
                   key={i}
                   transform={`translate(${30 + ((i + 0.5) / 8) * 840},${i % 2 ? 245 : 95})`}
                 >
-                  <circle
-                    r="25"
-                    fill={
-                      level
-                        ? ['#bafa68', '#aaa7ee', '#75dce5'][frame.types[i]]
-                        : '#203236'
-                    }
-                    stroke="#76918a"
-                  />
+                  <rect x="-27" y="-27" width="54" height="54" rx="14" fill="#15272b" stroke="#4d6b67" strokeWidth="2" />
+                  {level ? <>{frame.types[i] === 0 && <><path d="M-15 12 L-10 -12 L10 -12 L15 12 Z" fill="url(#towerGlow)" /><path d="M0 -12 V-25" stroke="#dff9b0" strokeWidth="5" strokeLinecap="round" /></>}{frame.types[i] === 1 && <><rect x="-12" y="-13" width="24" height="28" rx="4" fill="#aaa7ee" /><path d="M-12 -9 H12 M-12 0 H12" stroke="#eeeaff" strokeWidth="3" /></>}{frame.types[i] === 2 && <><circle r="14" fill="#75dce5" /><path d="M-19 0 H19 M0 -19 V19" stroke="#d7fbff" strokeWidth="3" /></>}</> : <text textAnchor="middle" y="6" fill="#67827b" fontSize="25">+</text>}
+                  {level > 1 && <circle r="20" fill="none" stroke="#bafa68" strokeWidth="2" strokeDasharray="3 5" opacity=".7" filter="url(#softGlow)" />}
                   <text
                     textAnchor="middle"
                     y="5"
                     fill={level ? '#102020' : '#a1b6b0'}
                     fontSize="14"
                   >
-                    {level ? `LV${level}` : '+'}
+                    {level ? `LV${level}` : ''}
                   </text>
                   <text
                     textAnchor="middle"
@@ -139,7 +140,8 @@ export function DefenseReplay() {
                   key={i}
                   transform={`translate(${30 + enemy.position * 840},170)`}
                 >
-                  <circle r="10" fill="#ef8059" />
+                  <rect x="-13" y="-13" width="26" height="26" rx="8" fill={i % 3 === 0 ? '#ef8059' : i % 3 === 1 ? '#e7a45e' : '#d96d92'} stroke="#ffd0a8" strokeWidth="2" transform={`rotate(${i * 17})`} />
+                  <rect x="-15" y="-21" width="30" height="4" rx="2" fill="#26383a" /><rect x="-15" y="-21" width={`${Math.max(2, Math.min(30, enemy.hp / 30 * 30))}`} height="4" rx="2" fill="#ef8059" />
                   <text
                     y="-17"
                     textAnchor="middle"
