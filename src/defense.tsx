@@ -427,7 +427,10 @@ export function DefenseReplay() {
     [playing, setPlaying] = useState(true),
     [speed, setSpeed] = useState(1),
     [selected, setSelected] = useState(3),
-    [runId, setRunId] = useState(1)
+    [runId, setRunId] = useState(1),
+    [liveFrame, setLiveFrame] = useState<Frame | null>(null),
+    [liveMode, setLiveMode] = useState(false),
+    [liveError, setLiveError] = useState('')
   const root = useRef<HTMLElement>(null)
   useEffect(() => {
     const controller = new AbortController()
@@ -451,6 +454,54 @@ export function DefenseReplay() {
     return () => clearInterval(timer)
   }, [replay, playing, speed])
   useEffect(() => {
+    if (!liveMode) return
+    let stopped = false
+    const session = `run-${runId}`
+    const tick = async () => {
+      try {
+        const response = await fetch('http://127.0.0.1:8787/step', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session, seed: 2000 }),
+        })
+        if (!response.ok) throw Error('실시간 추론 API에 연결할 수 없습니다.')
+        const result = await response.json()
+        if (!stopped) {
+          setLiveFrame(result.state)
+          if (result.done) setPlaying(false)
+        }
+      } catch (reason) {
+        if (!stopped) {
+          setLiveError(String(reason))
+          setLiveMode(false)
+        }
+      }
+    }
+    fetch('http://127.0.0.1:8787/reset', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session, seed: 2000 }),
+    })
+      .then((r) => r.json())
+      .then((state) => {
+        if (!stopped) {
+          setLiveFrame(state)
+          tick()
+        }
+      })
+      .catch(() => {
+        if (!stopped) {
+          setLiveError('실시간 API를 먼저 실행하세요: npm run brain:live')
+          setLiveMode(false)
+        }
+      })
+    const timer = window.setInterval(tick, 480 / speed)
+    return () => {
+      stopped = true
+      window.clearInterval(timer)
+    }
+  }, [liveMode, runId, speed])
+  useEffect(() => {
     if (
       !replay ||
       !root.current ||
@@ -468,8 +519,11 @@ export function DefenseReplay() {
       a.cancel()
     }
   }, [replay])
-  const frame = replay?.frames[index],
-    next = replay?.frames[Math.min(index + 1, replay.frames.length - 1)],
+  const replayFrame = replay?.frames[index],
+    frame = liveFrame ?? replayFrame,
+    next = liveMode
+      ? frame
+      : replay?.frames[Math.min(index + 1, replay.frames.length - 1)],
     ended = !!replay && index === replay.frames.length - 1
   const kind = kinds[frame?.types[selected] ?? 0],
     level = frame?.towers[selected] ?? 0
@@ -479,6 +533,13 @@ export function DefenseReplay() {
     setSelected(3)
     setSpeed(1)
     setPlaying(true)
+  }
+  const toggleLive = () => {
+    setLiveError('')
+    setLiveFrame(null)
+    setLiveMode((value) => !value)
+    setPlaying(false)
+    if (!liveMode) setRunId((value) => value + 1)
   }
   return (
     <main className="defense-app" ref={root}>
@@ -503,11 +564,22 @@ export function DefenseReplay() {
         </div>
         <div className="status-pill">
           <i />
-          {ended ? '재생 완료' : playing ? '리플레이 진행 중' : '일시 정지'}
+          {liveMode
+            ? 'FLYWIRE AI 온라인'
+            : ended
+              ? '재생 완료'
+              : playing
+                ? '리플레이 진행 중'
+                : '일시 정지'}
         </div>
       </div>
       {error && <p role="alert">{error}</p>}
-      {!replay && !error && <p>작전 기록 불러오는 중…</p>}
+      {!replay && !error && !liveError && <p>작전 기록 불러오는 중…</p>}
+      {liveError && (
+        <p className="live-error" role="alert">
+          {liveError}
+        </p>
+      )}
       {frame && next && replay && (
         <>
           <div className="command-layout">
@@ -584,6 +656,12 @@ export function DefenseReplay() {
                 <span>포탑을 선택해 유효 경로 확인</span>
               </div>
               <div className="playback">
+                <button
+                  className={`live-button ${liveMode ? 'enabled' : ''}`}
+                  onClick={toggleLive}
+                >
+                  {liveMode ? '● LIVE AI' : '◎ LIVE AI'}
+                </button>
                 <button className="new-game-button" onClick={startNewGame}>
                   ＋ 새 게임
                 </button>

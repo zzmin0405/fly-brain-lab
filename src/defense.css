@@ -226,6 +226,24 @@
   color: #1a2021 !important;
   font-weight: 800;
 }
+.live-button {
+  border-color: #568a7c !important;
+  color: #9ed7c3 !important;
+  background: #18332d !important;
+}
+.live-button.enabled {
+  color: #0d221b !important;
+  background: #8fe1b9 !important;
+  box-shadow: 0 0 18px #75dcb866;
+}
+.live-error {
+  color: #ef9d81;
+  border: 1px solid #75483e;
+  background: #291c1c;
+  padding: 12px 15px;
+  border-radius: 5px;
+  font-size: 11px;
+}
 .playback > span {
   margin-left: auto;
   font: 10px monospace;

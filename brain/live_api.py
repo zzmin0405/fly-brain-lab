@@ -25,7 +25,9 @@ except Exception as exc:  # API는 실행되지만 상태에 명시적으로 오
 class Handler(BaseHTTPRequestHandler):
     def _json(self, payload, status=200):
         body = json.dumps(payload, ensure_ascii=False).encode()
-        self.send_response(status); self.send_header('Content-Type', 'application/json'); self.send_header('Content-Length', str(len(body))); self.end_headers(); self.wfile.write(body)
+        self.send_response(status); self.send_header('Content-Type', 'application/json'); self.send_header('Access-Control-Allow-Origin', 'http://127.0.0.1:5173'); self.send_header('Access-Control-Allow-Headers', 'Content-Type'); self.send_header('Content-Length', str(len(body))); self.end_headers(); self.wfile.write(body)
+    def do_OPTIONS(self):
+        self.send_response(204); self.send_header('Access-Control-Allow-Origin', 'http://127.0.0.1:5173'); self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS'); self.send_header('Access-Control-Allow-Headers', 'Content-Type'); self.end_headers()
     def do_GET(self):
         if self.path == '/health': self._json({'ok': MODEL is not None, 'engine': 'fly-brain-live', 'mode': 'flywire-checkpoint' if MODEL else 'unavailable', 'error': MODEL_ERROR}); return
         self._json({'error': '찾을 수 없습니다.'}, 404)
