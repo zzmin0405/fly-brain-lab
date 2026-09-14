@@ -32,5 +32,8 @@ npm run dev
 - `npm run test`: 미로 연결성·재현성·통로 이동·종료 조건 검증
 - `npm run format`: 코드 포맷
 - `npm run preview`: 빌드 미리보기
+- `npm run brain:live`: 게임 틱별 행동을 반환하는 로컬 추론 API(`127.0.0.1:8787`) 실행
 
 React·TypeScript·Vite·Canvas 2D로 구성합니다. `src/simulation.ts`는 환경과 제어기, `src/drawMaze.ts`는 렌더링, `src/App.tsx`는 실험 UI입니다. 외부 서버나 API 키 없이 실행됩니다.
+
+방어 게임의 실시간 연결은 `brain/live_api.py`가 담당합니다. `/reset`으로 시드를 만들고 `/step`을 호출할 때마다 현재 환경을 한 틱 진행해 다음 행동과 상태를 반환합니다. 기본 어댑터는 재현 가능한 교사 정책이며, 체크포인트 추론 어댑터를 교체할 수 있도록 API 계약을 고정했습니다.
