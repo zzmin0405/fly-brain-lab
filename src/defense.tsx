@@ -177,6 +177,13 @@ function draw(
   ctx.fillText('NEURAL CORE', 770, 275)
   ctx.save()
   ctx.translate(863, 220)
+  ctx.globalAlpha = 0.35 + Math.sin(t * Math.PI * 2) * 0.15
+  ctx.beginPath()
+  ctx.arc(0, 0, 31 + Math.sin(t * Math.PI) * 7, 0, Math.PI * 2)
+  ctx.strokeStyle = '#72dfce66'
+  ctx.lineWidth = 2
+  ctx.stroke()
+  ctx.globalAlpha = 1
   ctx.shadowColor = '#72dfce'
   ctx.shadowBlur = 22
   ctx.strokeStyle = '#72dfce'
@@ -210,6 +217,22 @@ function draw(
         (enemy) => Math.abs(enemy.position - (i + 0.5) / 8) < kind.range,
       )
       const recoil = inRange ? Math.sin(t * Math.PI) * 2 : 0
+      const target = frame.enemies.find(
+        (enemy) => Math.abs(enemy.position - (i + 0.5) / 8) < kind.range,
+      )
+      if (target && inRange) {
+        const [tx, ty] = position(target.position)
+        ctx.save()
+        ctx.globalAlpha = Math.max(0, Math.sin(t * Math.PI))
+        ctx.strokeStyle = kind.color
+        ctx.lineWidth = frame.types[i] === 1 ? 2 : 1
+        ctx.setLineDash(frame.types[i] === 2 ? [2, 6] : [])
+        ctx.beginPath()
+        ctx.moveTo(0, -18)
+        ctx.lineTo(tx - x, ty - y)
+        ctx.stroke()
+        ctx.restore()
+      }
       ctx.translate(0, recoil)
       ctx.fillStyle = '#435962'
       ctx.fillRect(-15, -12, 30, 24)
@@ -290,6 +313,16 @@ function draw(
       ctx.beginPath()
       ctx.arc(0, 0, 12 + t * 35, 0, 7)
       ctx.stroke()
+      ctx.fillStyle = '#ffd59a'
+      for (let shard = 0; shard < 5; shard++) {
+        const angle = shard * 1.25 + t * 4
+        ctx.fillRect(
+          Math.cos(angle) * (15 + t * 12),
+          Math.sin(angle) * (15 + t * 12),
+          2,
+          2,
+        )
+      }
     }
     ctx.restore()
   })
