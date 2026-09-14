@@ -205,6 +205,12 @@
   font-weight: 700;
   min-width: 110px;
 }
+.new-game-button {
+  background: #e0a36d !important;
+  border-color: #e0a36d !important;
+  color: #1a2021 !important;
+  font-weight: 800;
+}
 .playback > span {
   margin-left: auto;
   font: 10px monospace;

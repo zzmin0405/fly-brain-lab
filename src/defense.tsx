@@ -360,7 +360,8 @@ export function DefenseReplay() {
     [index, setIndex] = useState(0),
     [playing, setPlaying] = useState(true),
     [speed, setSpeed] = useState(1),
-    [selected, setSelected] = useState(3)
+    [selected, setSelected] = useState(3),
+    [runId, setRunId] = useState(1)
   const root = useRef<HTMLElement>(null)
   useEffect(() => {
     const controller = new AbortController()
@@ -406,6 +407,13 @@ export function DefenseReplay() {
     ended = !!replay && index === replay.frames.length - 1
   const kind = kinds[frame?.types[selected] ?? 0],
     level = frame?.towers[selected] ?? 0
+  const startNewGame = () => {
+    setRunId((value) => value + 1)
+    setIndex(0)
+    setSelected(3)
+    setSpeed(1)
+    setPlaying(true)
+  }
   return (
     <main className="defense-app" ref={root}>
       <header className="command-nav">
@@ -416,7 +424,9 @@ export function DefenseReplay() {
           <span className="current">방어 작전</span>
           <a href="/maze.html">미로 실험실 ↗</a>
         </div>
-        <span className="session-tag">FLYWIRE / 783</span>
+        <span className="session-tag">
+          RUN {String(runId).padStart(2, '0')} · FLYWIRE / 783
+        </span>
       </header>
       <div className="mission-title reveal">
         <div>
@@ -508,6 +518,9 @@ export function DefenseReplay() {
                 <span>포탑을 선택해 유효 경로 확인</span>
               </div>
               <div className="playback">
+                <button className="new-game-button" onClick={startNewGame}>
+                  ＋ 새 게임
+                </button>
                 <button
                   className="play-button"
                   onClick={() => {
