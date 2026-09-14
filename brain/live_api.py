@@ -2,16 +2,32 @@
 import json
 import os
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+import numpy as np
+import torch
 from defense import Defense
+from train import BrainPolicy, load_graph
 
 SESSIONS = {}
+ROOT = Path(__file__).resolve().parents[1]
+SOURCE = Path(os.environ.get('FLY_BRAIN_SOURCE', ROOT.parent / 'drosophila-brain-reference'))
+CHECKPOINT = Path(os.environ.get('FLY_BRAIN_CHECKPOINT', ROOT / 'brain/artifacts/run-001/checkpoint.pt'))
+MODEL = None
+MODEL_ERROR = None
+try:
+    graph, _ = load_graph(SOURCE)
+    MODEL = BrainPolicy(graph)
+    MODEL.load_state_dict(torch.load(CHECKPOINT, map_location='cpu', weights_only=True)['state_dict'])
+    MODEL.eval()
+except Exception as exc:  # API는 실행되지만 상태에 명시적으로 오류를 반환한다.
+    MODEL_ERROR = str(exc)
 
 class Handler(BaseHTTPRequestHandler):
     def _json(self, payload, status=200):
         body = json.dumps(payload, ensure_ascii=False).encode()
         self.send_response(status); self.send_header('Content-Type', 'application/json'); self.send_header('Content-Length', str(len(body))); self.end_headers(); self.wfile.write(body)
     def do_GET(self):
-        if self.path == '/health': self._json({'ok': True, 'engine': 'fly-brain-live', 'mode': 'teacher-fallback'}); return
+        if self.path == '/health': self._json({'ok': MODEL is not None, 'engine': 'fly-brain-live', 'mode': 'flywire-checkpoint' if MODEL else 'unavailable', 'error': MODEL_ERROR}); return
         self._json({'error': '찾을 수 없습니다.'}, 404)
     def do_POST(self):
         size = int(self.headers.get('Content-Length', 0)); data = json.loads(self.rfile.read(size) or '{}')
@@ -20,7 +36,12 @@ class Handler(BaseHTTPRequestHandler):
         if self.path != '/step': self._json({'error': '찾을 수 없습니다.'}, 404); return
         env = SESSIONS.setdefault(session, Defense(int(data.get('seed', 2000))))
         if env.done: self._json({'state': env.snapshot(), 'action': 0, 'done': True}); return
-        action = env.teacher()  # 모델 어댑터를 연결하면 이 한 줄을 모델 추론으로 교체한다.
+        if MODEL is None:
+            self._json({'error': 'FlyWire 체크포인트를 로드하지 못했습니다.', 'detail': MODEL_ERROR}, 503); return
+        with torch.no_grad():
+            observation = torch.from_numpy(env.observe())[None]
+            logits = MODEL(observation)[0].masked_fill(~torch.from_numpy(env.mask()), -1e9)
+            action = int(logits.argmax())
         env.step(action)
         self._json({'state': env.snapshot(), 'action': action, 'done': env.done})
     def log_message(self, *_): return

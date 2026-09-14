@@ -36,4 +36,4 @@ npm run dev
 
 React·TypeScript·Vite·Canvas 2D로 구성합니다. `src/simulation.ts`는 환경과 제어기, `src/drawMaze.ts`는 렌더링, `src/App.tsx`는 실험 UI입니다. 외부 서버나 API 키 없이 실행됩니다.
 
-방어 게임의 실시간 연결은 `brain/live_api.py`가 담당합니다. `/reset`으로 시드를 만들고 `/step`을 호출할 때마다 현재 환경을 한 틱 진행해 다음 행동과 상태를 반환합니다. 기본 어댑터는 재현 가능한 교사 정책이며, 체크포인트 추론 어댑터를 교체할 수 있도록 API 계약을 고정했습니다.
+방어 게임의 실시간 연결은 `brain/live_api.py`가 담당합니다. 시작할 때 공개 연결망 파일과 `brain/artifacts/run-001/checkpoint.pt`를 로드하고, `/reset`으로 시드를 만들고 `/step`을 호출할 때마다 현재 관측을 전체 그래프 모델에 통과시켜 다음 행동과 상태를 반환합니다. 파일을 찾지 못하면 `/health`와 `/step`에 오류를 반환해 교사 정책으로 조용히 대체하지 않습니다.
