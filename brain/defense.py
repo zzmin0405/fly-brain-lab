@@ -5,6 +5,16 @@ import numpy as np
 SLOTS = 8
 ACTIONS = 17  # 대기, 슬롯별 구매 8개, 슬롯별 강화 8개
 OBSERVATIONS = 35
+ROUND_TICKS = 32
+MAX_ROUNDS = 20
+TICK_MS = 480
+
+
+def difficulty(tick):
+    round_number = min(MAX_ROUNDS, tick // ROUND_TICKS + 1)
+    return {'round': round_number, 'hp': round(12 * 1.22 ** (round_number - 1), 2),
+            'speed_multiplier': 1 + (round_number - 1) * 0.045,
+            'spawn_interval': max(1, 4 - (round_number - 1) // 3)}
 
 
 class Defense:
@@ -65,10 +75,10 @@ class Defense:
             self.towers[slot] += 1
         self.tick += 1
         self.gold += 2
-        wave = min(10, (self.tick - 1) // 16 + 1)
-        if self.tick % 3 == 1:
-            self.enemies.append({'position': 0.0, 'hp': float(9 + wave * 3),
-                                 'speed': self.rng.uniform(0.018, 0.03)})
+        settings = difficulty(self.tick - 1)
+        if (self.tick - 1) % ROUND_TICKS % settings['spawn_interval'] == 0:
+            self.enemies.append({'position': 0.0, 'hp': settings['hp'], 'max_hp': settings['hp'],
+                                 'speed': self.rng.uniform(0.018, 0.03) * settings['speed_multiplier']})
         for slot, level in enumerate(self.towers):
             if not level:
                 continue
@@ -91,10 +101,13 @@ class Defense:
             else:
                 alive.append(enemy)
         self.enemies = alive
-        self.done = self.lives <= 0 or self.tick >= 160
+        self.lives = max(0, self.lives)
+        self.done = self.lives <= 0 or self.tick >= ROUND_TICKS * MAX_ROUNDS
 
     def snapshot(self):
-        return {'seed': self.seed, 'tick': self.tick, 'wave': min(10, self.tick // 16 + 1),
+        settings = difficulty(max(0, self.tick - 1))
+        return {'seed': self.seed, 'tick': self.tick, 'wave': settings['round'],
+                'difficulty': settings, 'round_ticks': ROUND_TICKS, 'max_rounds': MAX_ROUNDS, 'tick_ms': TICK_MS,
                 'gold': self.gold, 'lives': self.lives, 'kills': self.kills,
                 'towers': self.towers.copy(), 'types': self.types,
                 'enemies': [dict(e) for e in self.enemies], 'done': self.done}

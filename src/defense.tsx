@@ -4,10 +4,14 @@ import { animate } from 'animejs'
 import './index.css'
 import './defense.css'
 
-type Enemy = { position: number; hp: number; speed?: number }
+type Enemy = { position: number; hp: number; max_hp: number; speed?: number }
 type Frame = {
   tick: number
   wave: number
+  round_ticks: number
+  max_rounds: number
+  tick_ms: number
+  difficulty: { hp: number; speed_multiplier: number; spawn_interval: number }
   gold: number
   lives: number
   kills: number
@@ -279,7 +283,7 @@ function draw(
     ctx.fillStyle = '#071014'
     ctx.fillRect(-14, -25, 28, 3)
     ctx.fillStyle = '#ef9d81'
-    ctx.fillRect(-14, -25, 28 * Math.min(1, enemy.hp / 39), 3)
+    ctx.fillRect(-14, -25, 28 * Math.min(1, enemy.hp / enemy.max_hp), 3)
     if (after && after.hp < enemy.hp && t < 0.5) {
       ctx.strokeStyle = '#ffe1af'
       ctx.lineWidth = 2
@@ -375,7 +379,7 @@ export function DefenseReplay() {
     if (!replay || !playing) return
     const timer = setInterval(
       () => setIndex((i) => Math.min(i + 1, replay.frames.length - 1)),
-      480 / speed,
+      replay.frames[0].tick_ms / speed,
     )
     return () => clearInterval(timer)
   }, [replay, playing, speed])
@@ -436,10 +440,8 @@ export function DefenseReplay() {
                 <div>
                   <small>WAVE</small>
                   <strong>
-                    {String(
-                      Math.min(10, Math.ceil(frame.tick / 16) || 1),
-                    ).padStart(2, '0')}
-                    <em>/10</em>
+                    {String(frame.wave).padStart(2, '0')}
+                    <em>/{frame.max_rounds}</em>
                   </strong>
                 </div>
                 <div>
@@ -461,10 +463,40 @@ export function DefenseReplay() {
                   <strong>{frame.kills}</strong>
                 </div>
               </div>
+              <div className="round-pressure" aria-live="polite">
+                <div>
+                  <b>ROUND {frame.wave}</b>
+                  <span>
+                    {ended
+                      ? frame.lives > 0
+                        ? '최종 라운드 생존'
+                        : '방어선 붕괴'
+                      : `다음 라운드 ${Math.ceil(((frame.round_ticks - (Math.max(0, frame.tick - 1) % frame.round_ticks) - 1) * frame.tick_ms) / 1000)}초`}
+                  </span>
+                </div>
+                <progress
+                  aria-label="현재 라운드 진행률"
+                  max={frame.round_ticks}
+                  value={
+                    frame.tick === 0
+                      ? 0
+                      : ((frame.tick - 1) % frame.round_ticks) + 1
+                  }
+                />
+                <small>
+                  적 HP {frame.difficulty.hp.toFixed(0)} · 속도 ×
+                  {frame.difficulty.speed_multiplier.toFixed(2)} · 출현{' '}
+                  {(
+                    (frame.difficulty.spawn_interval * frame.tick_ms) /
+                    1000
+                  ).toFixed(2)}
+                  초
+                </small>
+              </div>
               <Battlefield
                 frame={frame}
                 next={next}
-                duration={480 / speed}
+                duration={frame.tick_ms / speed}
                 playing={playing && !ended}
                 selected={selected}
                 onSelect={setSelected}
@@ -505,7 +537,10 @@ export function DefenseReplay() {
                     </button>
                   ))}
                 </div>
-                <span>{frame.tick} / 160 틱</span>
+                <span>
+                  {Math.floor((frame.tick * frame.tick_ms) / 1000)}초 /{' '}
+                  {frame.max_rounds} 라운드
+                </span>
               </div>
               <input
                 className="scrubber"

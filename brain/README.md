@@ -38,3 +38,9 @@ git clone https://github.com/philshiu/Drosophila_brain_model.git ../drosophila-b
 - [연구 논문](https://pmc.ncbi.nlm.nih.gov/articles/PMC11446845/): Shiu et al., A Drosophila computational brain model reveals sensorimotor processing (2024)
 - [FlyWire 데이터](https://edit.flywire.ai/principles.html): CC BY-NC 4.0. 본 실험은 가중치 정규화 및 전달 gain 학습을 적용했습니다.
 - 원 저장소 코드는 MIT이며 저작권자는 Philip Shiu와 Nico Spiller입니다. 이번 학습 코드는 별도 작성했으며 원본 `model.py`를 복사하지 않았습니다.
+
+## 점진 난이도 리플레이
+
+라운드는 32틱(기본 재생 약 15.36초)이며 최대 20라운드까지 진행합니다. 적 체력은 라운드마다 1.22배, 이동 속도는 기본값 대비 4.5%씩 증가합니다. 출현 간격은 4틱에서 시작해 3라운드마다 1틱씩 줄고 최소 1틱입니다. 기지 내구도가 0이 되거나 20라운드 시간이 끝나면 종료합니다. 기존 적은 생성 당시 능력치를 유지합니다.
+
+`python brain/replay.py`는 기존 run-001 체크포인트를 새 환경에서 재평가하고 공개 리플레이를 갱신합니다. 체크포인트 및 형제 디렉터리 `drosophila-brain-reference`의 원본 연결망 파일이 필요합니다. 기존 체크포인트 입력 스케일을 유지하며 재학습은 하지 않습니다. 이번 시드 2000 결과는 11라운드, 351틱에 내구도 0으로 종료되었습니다.
