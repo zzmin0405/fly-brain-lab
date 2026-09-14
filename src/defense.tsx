@@ -1,7 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
+import { animate } from 'animejs'
 import './index.css'
+import './defense.css'
 
+type Enemy = { position: number; hp: number; speed?: number }
 type Frame = {
   tick: number
   wave: number
@@ -10,7 +13,7 @@ type Frame = {
   kills: number
   towers: number[]
   types: number[]
-  enemies: { position: number; hp: number }[]
+  enemies: Enemy[]
   action?: number
 }
 type Replay = {
@@ -18,229 +21,614 @@ type Replay = {
   report: {
     manifest: { nodes: number; coalesced_edges: number }
     changed_neuron_gains: number
-    before: { mean_score: number }
-    after: { mean_score: number }
-    validation_teacher_agreement: number
   }
 }
-const trackPoints = [
-  [30, 170], [130, 170], [180, 92], [300, 92], [350, 248],
-  [485, 248], [540, 105], [680, 105], [735, 220], [870, 220],
-] as const
-const trackPath = `M ${trackPoints.map(([x, y]) => `${x} ${y}`).join(' L ')}`
-const towerMeta = [
-  { name: '블라스트 포탑', role: '범위 폭발', damage: '42', range: '105', rate: '1.2s', color: '#bafa68' },
-  { name: '아이리스 레일', role: '단일 저격', damage: '96', range: '150', rate: '2.4s', color: '#aaa7ee' },
-  { name: '펄스 앵커', role: '감속 제어', damage: '18', range: '78', rate: '0.8s', color: '#75dce5' },
+const kinds = [
+  {
+    name: '바스티온',
+    code: 'B01',
+    role: '고화력 포격',
+    color: '#f1bb72',
+    damage: 3.2,
+    range: 0.14,
+    description: '사거리 안에서 가장 앞선 적에게 집중 포격합니다.',
+  },
+  {
+    name: '롱보우',
+    code: 'L02',
+    role: '장거리 저격',
+    color: '#ab9aff',
+    damage: 2.2,
+    range: 0.2,
+    description: '넓은 경로 구간을 감시하는 장거리 방어 포탑입니다.',
+  },
+  {
+    name: '콜드스냅',
+    code: 'C03',
+    role: '진행 억제',
+    color: '#72dfce',
+    damage: 2.2,
+    range: 0.14,
+    description: '타격마다 적의 경로 진행도를 1.2% 되돌립니다.',
+  },
 ]
-function trackPosition(progress: number) {
-  const segments = trackPoints.slice(1).map((point, i) => {
-    const [x, y] = trackPoints[i]
-    return { x, y, dx: point[0] - x, dy: point[1] - y, length: Math.hypot(point[0] - x, point[1] - y) }
-  })
-  const total = segments.reduce((sum, segment) => sum + segment.length, 0)
-  let distance = Math.max(0, Math.min(1, progress)) * total
-  for (const segment of segments) {
-    if (distance <= segment.length) return [segment.x + segment.dx * (distance / segment.length), segment.y + segment.dy * (distance / segment.length)]
-    distance -= segment.length
+const points = [
+  [-20, 280],
+  [150, 280],
+  [215, 140],
+  [390, 140],
+  [450, 390],
+  [630, 390],
+  [695, 220],
+  [920, 220],
+]
+const slots = [
+  [110, 190],
+  [255, 230],
+  [355, 60],
+  [360, 335],
+  [530, 290],
+  [620, 470],
+  [730, 320],
+  [805, 130],
+]
+const lengths = points
+  .slice(1)
+  .map((p, i) => Math.hypot(p[0] - points[i][0], p[1] - points[i][1]))
+const total = lengths.reduce((a, b) => a + b, 0)
+function position(progress: number) {
+  let d = Math.max(0, Math.min(1, progress)) * total
+  for (let i = 0; i < lengths.length; i++) {
+    if (d <= lengths[i]) {
+      const t = d / lengths[i]
+      return [
+        points[i][0] + (points[i + 1][0] - points[i][0]) * t,
+        points[i][1] + (points[i + 1][1] - points[i][1]) * t,
+      ]
+    }
+    d -= lengths[i]
   }
-  return trackPoints[trackPoints.length - 1]
+  return points[points.length - 1]
+}
+function trace(ctx: CanvasRenderingContext2D, start = 0, end = 1) {
+  ctx.beginPath()
+  for (let i = 0; i <= 180; i++) {
+    const [x, y] = position(start + ((end - start) * i) / 180)
+    if (i === 0) ctx.moveTo(x, y)
+    else ctx.lineTo(x, y)
+  }
+}
+function draw(
+  ctx: CanvasRenderingContext2D,
+  frame: Frame,
+  next: Frame,
+  t: number,
+  selected: number,
+) {
+  ctx.clearRect(0, 0, 900, 540)
+  ctx.fillStyle = '#111e24'
+  ctx.fillRect(0, 0, 900, 540)
+  ctx.strokeStyle = '#ffffff05'
+  ctx.lineWidth = 1
+  for (let x = 0; x < 900; x += 30) {
+    ctx.beginPath()
+    ctx.moveTo(x, 0)
+    ctx.lineTo(x, 540)
+    ctx.stroke()
+  }
+  for (let y = 0; y < 540; y += 30) {
+    ctx.beginPath()
+    ctx.moveTo(0, y)
+    ctx.lineTo(900, y)
+    ctx.stroke()
+  }
+  // 고정 위치의 지형 장식.
+  for (let i = 0; i < 40; i++) {
+    const x = (i * 173 + 47) % 900,
+      y = (i * 97 + 33) % 540
+    ctx.fillStyle = i % 2 ? '#223236' : '#1b2b30'
+    ctx.beginPath()
+    ctx.moveTo(x, y - 8)
+    ctx.lineTo(x + 13, y - 3)
+    ctx.lineTo(x + 9, y + 9)
+    ctx.lineTo(x - 9, y + 7)
+    ctx.closePath()
+    ctx.fill()
+  }
+  ctx.lineJoin = 'round'
+  ctx.lineCap = 'round'
+  trace(ctx)
+  ctx.strokeStyle = '#080f15'
+  ctx.lineWidth = 64
+  ctx.stroke()
+  trace(ctx)
+  ctx.strokeStyle = '#425053'
+  ctx.lineWidth = 54
+  ctx.stroke()
+  trace(ctx)
+  ctx.strokeStyle = '#29363c'
+  ctx.lineWidth = 48
+  ctx.stroke()
+  trace(ctx)
+  ctx.strokeStyle = '#6c7c792e'
+  ctx.lineWidth = 2
+  ctx.setLineDash([3, 15])
+  ctx.stroke()
+  ctx.setLineDash([])
+  const k = kinds[frame.types[selected] ?? 0]
+  if (frame.towers[selected]) {
+    trace(
+      ctx,
+      Math.max(0, (selected + 0.5) / 8 - k.range),
+      Math.min(1, (selected + 0.5) / 8 + k.range),
+    )
+    ctx.strokeStyle = k.color + '55'
+    ctx.lineWidth = 42
+    ctx.stroke()
+  }
+  ctx.font = 'bold 10px monospace'
+  ctx.fillStyle = '#eb9876'
+  ctx.fillText('HOSTILE ENTRY', 25, 335)
+  ctx.fillStyle = '#72dfce'
+  ctx.fillText('NEURAL CORE', 770, 275)
+  ctx.save()
+  ctx.translate(863, 220)
+  ctx.shadowColor = '#72dfce'
+  ctx.shadowBlur = 22
+  ctx.strokeStyle = '#72dfce'
+  ctx.lineWidth = 3
+  ctx.strokeRect(-20, -26, 40, 52)
+  ctx.fillStyle = '#72dfce'
+  ctx.fillRect(-7, -14, 14, 28)
+  ctx.restore()
+  slots.forEach(([x, y], i) => {
+    const level = frame.towers[i],
+      kind = kinds[frame.types[i]]
+    ctx.save()
+    ctx.translate(x, y)
+    ctx.fillStyle = '#070e13'
+    ctx.beginPath()
+    ctx.ellipse(0, 14, 29, 15, 0, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = '#25383e'
+    ctx.strokeStyle = selected === i ? kind.color : '#52666b'
+    ctx.lineWidth = selected === i ? 2 : 1
+    ctx.beginPath()
+    for (let a = 0; a < 6; a++) {
+      const angle = (a * Math.PI) / 3
+      ctx.lineTo(Math.cos(angle) * 28, Math.sin(angle) * 23)
+    }
+    ctx.closePath()
+    ctx.fill()
+    ctx.stroke()
+    if (level) {
+      const inRange = frame.enemies.some(
+        (enemy) => Math.abs(enemy.position - (i + 0.5) / 8) < kind.range,
+      )
+      const recoil = inRange ? Math.sin(t * Math.PI) * 2 : 0
+      ctx.translate(0, recoil)
+      ctx.fillStyle = '#435962'
+      ctx.fillRect(-15, -12, 30, 24)
+      ctx.fillStyle = kind.color
+      ctx.fillRect(-11, -10, 22, 5)
+      if (frame.types[i] === 0) {
+        ctx.fillStyle = '#ad936f'
+        ctx.fillRect(-10, -29, 7, 23)
+        ctx.fillRect(3, -29, 7, 23)
+      } else if (frame.types[i] === 1) {
+        ctx.fillStyle = '#a19cbe'
+        ctx.fillRect(-4, -39, 8, 34)
+        ctx.fillStyle = '#e5dfff'
+        ctx.fillRect(-2, -38, 4, 8)
+      } else {
+        ctx.strokeStyle = kind.color
+        ctx.lineWidth = 3
+        ctx.beginPath()
+        ctx.arc(0, -5, 11, 0, Math.PI * 2)
+        ctx.stroke()
+        ctx.fillStyle = '#b4fff0'
+        ctx.fillRect(-3, -10, 6, 10)
+      }
+      ctx.fillStyle = kind.color
+      for (let l = 0; l < level; l++) ctx.fillRect(-9 + l * 8, 19, 5, 3)
+    } else {
+      ctx.fillStyle = '#6c8287'
+      ctx.font = '20px monospace'
+      ctx.textAlign = 'center'
+      ctx.fillText('+', 0, 7)
+    }
+    ctx.font = '9px monospace'
+    ctx.textAlign = 'center'
+    ctx.fillStyle = selected === i ? kind.color : '#80959b'
+    ctx.fillText(String(i + 1).padStart(2, '0'), 0, 43)
+    ctx.restore()
+  })
+  frame.enemies.forEach((enemy, i) => {
+    const after = next.enemies.find((e) => e.speed === enemy.speed)
+    const p =
+      enemy.position +
+      ((after?.position ?? enemy.position) - enemy.position) * t
+    const [x, y] = position(p)
+    ctx.save()
+    ctx.translate(x, y)
+    ctx.fillStyle = '#0008'
+    ctx.beginPath()
+    ctx.ellipse(0, 9, 13, 6, 0, 0, 7)
+    ctx.fill()
+    ctx.strokeStyle = '#ae635f'
+    ctx.lineWidth = 3
+    for (let a = -1; a <= 1; a += 2) {
+      ctx.beginPath()
+      ctx.moveTo(a * 7, -5)
+      ctx.lineTo(a * 15, -10)
+      ctx.moveTo(a * 8, 3)
+      ctx.lineTo(a * 15, 10)
+      ctx.stroke()
+    }
+    ctx.fillStyle = i % 2 ? '#bc796e' : '#cd8a71'
+    ctx.beginPath()
+    ctx.moveTo(0, -15)
+    ctx.lineTo(10, -4)
+    ctx.lineTo(7, 10)
+    ctx.lineTo(-7, 10)
+    ctx.lineTo(-10, -4)
+    ctx.closePath()
+    ctx.fill()
+    ctx.fillStyle = '#ffe7b5'
+    ctx.fillRect(-4, -6, 8, 3)
+    ctx.fillStyle = '#071014'
+    ctx.fillRect(-14, -25, 28, 3)
+    ctx.fillStyle = '#ef9d81'
+    ctx.fillRect(-14, -25, 28 * Math.min(1, enemy.hp / 39), 3)
+    if (after && after.hp < enemy.hp && t < 0.5) {
+      ctx.strokeStyle = '#ffe1af'
+      ctx.lineWidth = 2
+      ctx.beginPath()
+      ctx.arc(0, 0, 12 + t * 35, 0, 7)
+      ctx.stroke()
+    }
+    ctx.restore()
+  })
+}
+function Battlefield({
+  frame,
+  next,
+  duration,
+  playing,
+  selected,
+  onSelect,
+}: {
+  frame: Frame
+  next: Frame
+  duration: number
+  playing: boolean
+  selected: number
+  onSelect: (i: number) => void
+}) {
+  const canvas = useRef<HTMLCanvasElement>(null)
+  useEffect(() => {
+    const el = canvas.current
+    const ctx = el?.getContext('2d')
+    if (!el || !ctx) return
+    const ratio = Math.min(window.devicePixelRatio || 1, 2)
+    el.width = 900 * ratio
+    el.height = 540 * ratio
+    ctx.scale(ratio, ratio)
+    const clock = { t: 0 }
+    const reduced = window.matchMedia(
+      '(prefers-reduced-motion: reduce)',
+    ).matches
+    const render = () => draw(ctx, frame, next, clock.t, selected)
+    render()
+    if (!playing || reduced) return
+    const animation = animate(clock, {
+      t: 1,
+      duration,
+      ease: 'linear',
+      onUpdate: render,
+    })
+    return () => {
+      animation.cancel()
+    }
+  }, [frame, next, duration, playing, selected])
+  return (
+    <div className="battlefield">
+      <canvas
+        ref={canvas}
+        aria-label="구불구불한 경로에서 진행되는 자동 방어 리플레이"
+      />
+      {slots.map(([x, y], i) => (
+        <button
+          key={i}
+          className={`slot-hit ${selected === i ? 'active' : ''}`}
+          style={{ left: `${x / 9}%`, top: `${y / 5.4}%` }}
+          aria-label={`${i + 1}번 ${kinds[frame.types[i]].name} 포탑 선택`}
+          aria-pressed={selected === i}
+          onClick={() => onSelect(i)}
+        />
+      ))}
+    </div>
+  )
 }
 export function DefenseReplay() {
-  const [replay, setReplay] = useState<Replay | null>(null)
-  const [error, setError] = useState('')
-  const [index, setIndex] = useState(0)
-  const [playing, setPlaying] = useState(true)
+  const [replay, setReplay] = useState<Replay | null>(null),
+    [error, setError] = useState(''),
+    [index, setIndex] = useState(0),
+    [playing, setPlaying] = useState(true),
+    [speed, setSpeed] = useState(1),
+    [selected, setSelected] = useState(3)
+  const root = useRef<HTMLElement>(null)
   useEffect(() => {
-    fetch('/trained-defense.json')
-      .then((response) => {
-        if (!response.ok)
-          throw new Error('학습 결과가 아직 준비되지 않았습니다.')
-        return response.json()
+    const controller = new AbortController()
+    fetch('/trained-defense.json', { signal: controller.signal })
+      .then((r) => {
+        if (!r.ok) throw Error('리플레이를 불러오지 못했습니다.')
+        return r.json()
       })
       .then(setReplay)
-      .catch((reason) => setError(String(reason)))
+      .catch((e) => {
+        if (e.name !== 'AbortError') setError(String(e))
+      })
+    return () => controller.abort()
   }, [])
   useEffect(() => {
     if (!replay || !playing) return
     const timer = setInterval(
       () => setIndex((i) => Math.min(i + 1, replay.frames.length - 1)),
-      160,
+      480 / speed,
     )
     return () => clearInterval(timer)
-  }, [playing, replay])
-  const frame = replay?.frames[index]
+  }, [replay, playing, speed])
+  useEffect(() => {
+    if (
+      !replay ||
+      !root.current ||
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    )
+      return
+    const a = animate(root.current.querySelectorAll('.reveal'), {
+      opacity: [0, 1],
+      translateY: [12, 0],
+      duration: 650,
+      delay: (_, i) => (i ?? 0) * 70,
+      ease: 'outCubic',
+    })
+    return () => {
+      a.cancel()
+    }
+  }, [replay])
+  const frame = replay?.frames[index],
+    next = replay?.frames[Math.min(index + 1, replay.frames.length - 1)],
+    ended = !!replay && index === replay.frames.length - 1
+  const kind = kinds[frame?.types[selected] ?? 0],
+    level = frame?.towers[selected] ?? 0
   return (
-    <main className="game-shell">
-      <header className="game-nav">
-        <a href="/defense.html">BRAIN / DEFENSE</a>
-        <a href="/maze.html">미로 실험실 →</a>
+    <main className="defense-app" ref={root}>
+      <header className="command-nav">
+        <a href="/">
+          N<span>O</span>DE<span className="brand-sub">DEFENSE PROTOCOL</span>
+        </a>
+        <div className="nav-tabs">
+          <span className="current">방어 작전</span>
+          <a href="/maze.html">미로 실험실 ↗</a>
+        </div>
+        <span className="session-tag">FLYWIRE / 783</span>
       </header>
-      <section className="intro game-hero">
-        <p className="eyebrow">FULL CONNECTOME / TRAINING REPLAY</p>
-        <h1>
-          실제 연결망.
-          <br />첫 번째 방어 실험.
-        </h1>
-        <p>
-          학습한 모델이 직접 선택한 구매·강화 기록입니다. 실시간 추론과 사용자
-          튜닝은 아직 연결하지 않았습니다.
-        </p>
-      </section>
+      <div className="mission-title reveal">
+        <div>
+          <p className="overline">SECTOR 07 / NEURAL FRONTIER</p>
+          <h1>
+            시냅스 방어선<span>작전 기록 #2000</span>
+          </h1>
+        </div>
+        <div className="status-pill">
+          <i />
+          {ended ? '재생 완료' : playing ? '리플레이 진행 중' : '일시 정지'}
+        </div>
+      </div>
       {error && <p role="alert">{error}</p>}
-      {replay && frame && (
+      {!replay && !error && <p>작전 기록 불러오는 중…</p>}
+      {frame && next && replay && (
         <>
-          <div className="toolbar game-toolbar">
-            <button className="primary" onClick={() => setPlaying(!playing)}>
-              {playing ? '일시 정지' : '재생'}
-            </button>
-            <button
-              onClick={() => {
-                setIndex(0)
-                setPlaying(true)
-              }}
-            >
-              처음부터
-            </button>
-            <span>
-              검증 시드 2000 · 웨이브 {frame.wave}/10 · 틱 {frame.tick}/160
-            </span>
-          </div>
-          <div className="wave-strip">
-            <span className="wave-strip-label">WAVE {String(frame.wave).padStart(2, '0')}</span>
-            <div className="wave-progress"><i style={{ width: `${Math.min(100, (frame.tick / 160) * 100)}%` }} /></div>
-            <span className="wave-strip-meta">다음 웨이브까지 {Math.max(0, 160 - frame.tick)}틱</span>
-          </div>
-          <div className="arena game-arena">
-            <div className="bar game-hud">
-              <span>♥ {frame.lives} 생명</span>
-              <span>◈ {frame.gold} 골드</span>
-              <span>{frame.kills} 처치</span>
-            </div>
-            <svg
-              viewBox="0 0 900 340"
-              role="img"
-              aria-label="전체 연결망 모델의 타워 디펜스 플레이 리플레이"
-              style={{ width: '100%', display: 'block' }}
-            >
-              <defs>
-                <linearGradient id="towerGlow" x1="0" x2="1">
-                  <stop offset="0" stopColor="#bafa68" />
-                  <stop offset="1" stopColor="#4d9c79" />
-                </linearGradient>
-                <filter id="softGlow"><feGaussianBlur stdDeviation="4" result="blur" /><feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
-              </defs>
-              <path d={trackPath} fill="none" stroke="#57716d" strokeWidth="44" strokeLinecap="round" strokeLinejoin="round" />
-              <path
-                d={trackPath}
-                stroke="#bafa6844"
-                strokeWidth="2"
-                strokeDasharray="8 8"
+          <div className="command-layout">
+            <section className="combat-panel reveal">
+              <div className="combat-hud">
+                <div>
+                  <small>WAVE</small>
+                  <strong>
+                    {String(
+                      Math.min(10, Math.ceil(frame.tick / 16) || 1),
+                    ).padStart(2, '0')}
+                    <em>/10</em>
+                  </strong>
+                </div>
+                <div>
+                  <small>기지 내구도</small>
+                  <strong className="mint">
+                    {frame.lives}
+                    <em>/12</em>
+                  </strong>
+                </div>
+                <div>
+                  <small>보유 자원</small>
+                  <strong className="gold">
+                    {frame.gold}
+                    <em>G</em>
+                  </strong>
+                </div>
+                <div>
+                  <small>처치</small>
+                  <strong>{frame.kills}</strong>
+                </div>
+              </div>
+              <Battlefield
+                frame={frame}
+                next={next}
+                duration={480 / speed}
+                playing={playing && !ended}
+                selected={selected}
+                onSelect={setSelected}
               />
-              {frame.towers.map((level, i) => (
-                <g
-                  key={i}
-                  transform={`translate(${30 + ((i + 0.5) / 8) * 840},${i % 2 ? 245 : 95})`}
+              <div className="map-caption">
+                <span>
+                  <i /> 구간 07 · 굴곡 방어선
+                </span>
+                <span>포탑을 선택해 유효 경로 확인</span>
+              </div>
+              <div className="playback">
+                <button
+                  className="play-button"
+                  onClick={() => {
+                    if (ended) setIndex(0)
+                    setPlaying(ended ? true : !playing)
+                  }}
                 >
-                  <circle r={frame.types[i] === 0 ? 105 : frame.types[i] === 1 ? 150 : 78} fill={frame.types[i] === 1 ? '#aaa7ee12' : frame.types[i] === 2 ? '#75dce512' : '#bafa6810'} stroke={frame.types[i] === 1 ? '#aaa7ee55' : frame.types[i] === 2 ? '#75dce555' : '#bafa6855'} strokeDasharray="5 7" />
-                  <rect x="-27" y="-27" width="54" height="54" rx="14" fill="#15272b" stroke="#4d6b67" strokeWidth="2" />
-                  {level ? <>{frame.types[i] === 0 && <><path d="M-15 12 L-10 -12 L10 -12 L15 12 Z" fill="url(#towerGlow)" /><path d="M0 -12 V-25" stroke="#dff9b0" strokeWidth="5" strokeLinecap="round" /></>}{frame.types[i] === 1 && <><rect x="-12" y="-13" width="24" height="28" rx="4" fill="#aaa7ee" /><path d="M-12 -9 H12 M-12 0 H12" stroke="#eeeaff" strokeWidth="3" /></>}{frame.types[i] === 2 && <><circle r="14" fill="#75dce5" /><path d="M-19 0 H19 M0 -19 V19" stroke="#d7fbff" strokeWidth="3" /></>}</> : <text textAnchor="middle" y="6" fill="#67827b" fontSize="25">+</text>}
-                  {level > 1 && <circle r="20" fill="none" stroke="#bafa68" strokeWidth="2" strokeDasharray="3 5" opacity=".7" filter="url(#softGlow)" />}
-                  <text
-                    textAnchor="middle"
-                    y="5"
-                    fill={level ? '#102020' : '#a1b6b0'}
-                    fontSize="14"
-                  >
-                    {level ? `LV${level}` : ''}
-                  </text>
-                  <text
-                    textAnchor="middle"
-                    y={i % 2 ? 45 : -37}
-                    fill="#adc0b9"
-                    fontSize="12"
-                  >
-                    {['포격', '장거리', '감속'][frame.types[i]]}
-                  </text>
-                </g>
-              ))}
-              {frame.enemies.map((enemy, i) => (
-                <g
-                  key={i}
-                  transform={`translate(${trackPosition(enemy.position)[0]},${trackPosition(enemy.position)[1]})`}
+                  {ended ? '↻ 다시 재생' : playing ? 'Ⅱ 일시 정지' : '▶ 재생'}
+                </button>
+                <button
+                  onClick={() => {
+                    setIndex(0)
+                    setPlaying(false)
+                  }}
+                  aria-label="처음으로"
                 >
-                  <rect x="-13" y="-13" width="26" height="26" rx="8" fill={i % 3 === 0 ? '#ef8059' : i % 3 === 1 ? '#e7a45e' : '#d96d92'} stroke="#ffd0a8" strokeWidth="2" transform={`rotate(${i * 17})`} />
-                  <rect x="-15" y="-21" width="30" height="4" rx="2" fill="#26383a" /><rect x="-15" y="-21" width={`${Math.max(2, Math.min(30, enemy.hp / 30 * 30))}`} height="4" rx="2" fill="#ef8059" />
-                  <text
-                    y="-17"
-                    textAnchor="middle"
-                    fill="#eff4ef"
-                    fontSize="10"
-                  >
-                    {Math.ceil(enemy.hp)}
-                  </text>
-                </g>
-              ))}
-              <text x="14" y="215" fill="#adc0b9">
-                적 진입
-              </text>
-              <text x="825" y="215" fill="#bafa68">
-                기지
-              </text>
-            </svg>
-            <div className="bar game-decision">
-              결정:{' '}
-              {!frame.action
-                ? '대기'
-                : frame.action <= 8
-                  ? `${frame.action}번 슬롯 구매`
-                  : `${frame.action - 8}번 슬롯 강화`}
-            </div>
+                  ↶
+                </button>
+                <div className="speed-switch">
+                  {[0.5, 1, 2].map((s) => (
+                    <button
+                      key={s}
+                      className={speed === s ? 'chosen' : ''}
+                      onClick={() => setSpeed(s)}
+                    >
+                      {s}×
+                    </button>
+                  ))}
+                </div>
+                <span>{frame.tick} / 160 틱</span>
+              </div>
+              <input
+                className="scrubber"
+                type="range"
+                min="0"
+                max={replay.frames.length - 1}
+                value={index}
+                aria-label="리플레이 탐색"
+                onChange={(e) => {
+                  setPlaying(false)
+                  setIndex(Number(e.target.value))
+                }}
+              />
+            </section>
+            <aside
+              className="inspector reveal"
+              style={{ '--accent': kind.color } as React.CSSProperties}
+            >
+              <div className="panel-heading">
+                TOWER INSPECTOR
+                <span>슬롯 {String(selected + 1).padStart(2, '0')}</span>
+              </div>
+              <div className={`tower-portrait type-${frame.types[selected]}`}>
+                <div className="portrait-ring" />
+                <div className="large-turret">
+                  <i />
+                  <b />
+                  <em />
+                </div>
+                <span>{kind.code}</span>
+              </div>
+              <div className="inspector-body">
+                <p className="overline">
+                  {kind.role} · {level ? `LEVEL ${level}` : '미배치'}
+                </p>
+                <h2>{kind.name}</h2>
+                <p>{kind.description}</p>
+                <div className="specs">
+                  <div>
+                    <span>공격력 / 틱</span>
+                    <b>{level ? (kind.damage * level).toFixed(1) : '—'}</b>
+                  </div>
+                  <div>
+                    <span>경로 사거리</span>
+                    <b>±{Math.round(kind.range * 100)}%</b>
+                  </div>
+                  <div>
+                    <span>강화 단계</span>
+                    <b>{level} / 3</b>
+                  </div>
+                </div>
+                <div className="level-bars">
+                  {[1, 2, 3].map((l) => (
+                    <i key={l} className={level >= l ? 'filled' : ''} />
+                  ))}
+                </div>
+                <p className="technical-note">
+                  강조한 경로가 실제 판정 구간입니다. 맵 좌표는 리플레이용
+                  시각화입니다.
+                </p>
+              </div>
+            </aside>
           </div>
-          <section className="tower-deck" aria-label="포탑 도감">
-            <div className="tower-deck-heading"><span>DEFENSE LOADOUT</span><small>자동 배치된 포탑의 전투 스펙</small></div>
-            <div className="tower-cards">
-              {towerMeta.map((tower, i) => <article className="tower-card" key={tower.name} style={{ '--tower-color': tower.color } as React.CSSProperties}>
-                <div className="tower-card-top"><span className="tower-icon">{i === 0 ? '◆' : i === 1 ? '╋' : '✦'}</span><div><strong>{tower.name}</strong><small>{tower.role}</small></div><em>{frame.towers[i] ? `LV ${frame.towers[i]}` : 'EMPTY'}</em></div>
-                <div className="tower-metrics"><span><b>{tower.damage}</b> DMG</span><span><b>{tower.range}</b> RNG</span><span><b>{tower.rate}</b> CD</span></div>
-              </article>)}
+          <section className="deployment reveal">
+            <div className="panel-heading">
+              DEPLOYMENT
+              <span>배치 {frame.towers.filter(Boolean).length} / 8</span>
+            </div>
+            <div className="slot-roster">
+              {frame.towers.map((l, i) => (
+                <button
+                  key={i}
+                  className={selected === i ? 'selected' : ''}
+                  onClick={() => setSelected(i)}
+                  style={
+                    {
+                      '--accent': kinds[frame.types[i]].color,
+                    } as React.CSSProperties
+                  }
+                >
+                  <small>0{i + 1}</small>
+                  <b>{kinds[frame.types[i]].name}</b>
+                  <span>{l ? `LV.${l}` : '미배치'}</span>
+                </button>
+              ))}
             </div>
           </section>
-          <section className="history game-stats">
-            <h2>실제 실행 결과</h2>
+          <div className="operation-log reveal">
+            <span>MODEL DECISION</span>
+            <b>
+              {!frame.action
+                ? '자원을 비축하며 전황 관찰'
+                : frame.action <= 8
+                  ? `${frame.action}번 슬롯 포탑 배치`
+                  : `${frame.action - 8}번 슬롯 포탑 강화`}
+            </b>
+            <small>학습 모델의 기록된 행동</small>
+          </div>
+          <details className="model-details">
+            <summary>연결망 모델 · 리플레이 정보</summary>
             <p>
-              뉴런 {replay.report.manifest.nodes.toLocaleString()}개 · 연결{' '}
-              {replay.report.manifest.coalesced_edges.toLocaleString()}개 ·
-              학습된 뉴런 gain{' '}
-              {replay.report.changed_neuron_gains.toLocaleString()}개
+              FlyWire v783 뉴런 {replay.report.manifest.nodes.toLocaleString()}
+              개 · 연결{' '}
+              {replay.report.manifest.coalesced_edges.toLocaleString()}개. 학습
+              결과를 재생하며 실시간 추론은 아직 연결하지 않았습니다. 모션은
+              기록 사이를 보간한 연출입니다.
             </p>
             <p>
-              동일 평가 시드 점수: 학습 전 {replay.report.before.mean_score} →
-              학습 후 {replay.report.after.mean_score}
-            </p>
-            <p>
-              별도 검증 시드에서 교사 행동 일치율:{' '}
-              {(replay.report.validation_teacher_agreement * 100).toFixed(1)}%
-            </p>
-            <p>
-              모델: 실제 FlyWire v783 연결망 + 인공 감각/행동 인터페이스 + 3단계
-              rate 계산. 초파리의 생물학적 행동을 재현했다는 의미는 아닙니다. 첫
-              학습은 수작업 교사의 행동 모방이며 도파민 학습이 아닙니다.
-            </p>
-            <p>
-              데이터:{' '}
+              기존 인공 감각·행동 인터페이스를 사용하며 생물학적 행동의 재현을
+              의미하지 않습니다.{' '}
               <a href="https://github.com/philshiu/Drosophila_brain_model">
-                Shiu 연구진 배포본
+                데이터 출처
               </a>{' '}
               ·{' '}
-              <a href="https://edit.flywire.ai/principles.html">
-                FlyWire CC BY-NC 4.0
-              </a>{' '}
-              · 가중치 정규화와 뉴런별 전달 배율 학습 적용
+              <a href="https://edit.flywire.ai/principles.html">CC BY-NC 4.0</a>
             </p>
-          </section>
+          </details>
         </>
       )}
+      <footer className="command-footer">
+        <span>NEURAL SYSTEMS / EXPERIMENT 001</span>
+        <span>Anime.js motion engine</span>
+      </footer>
     </main>
   )
 }
