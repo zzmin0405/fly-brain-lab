@@ -223,14 +223,47 @@ function draw(
       if (target && inRange) {
         const [tx, ty] = position(target.position)
         ctx.save()
-        ctx.globalAlpha = Math.max(0, Math.sin(t * Math.PI))
-        ctx.strokeStyle = kind.color
-        ctx.lineWidth = frame.types[i] === 1 ? 2 : 1
+        const muzzleX = frame.types[i] === 1 ? 0 : frame.types[i] === 0 ? 0 : 0
+        const muzzleY = frame.types[i] === 1 ? -39 : -18
+        // 매 프레임을 발사 사이클로 보고, 탄환이 포탑에서 적까지 날아간다.
+        const shotT = Math.min(1, Math.max(0, t * 1.35))
+        const projectileX = muzzleX + (tx - x - muzzleX) * shotT
+        const projectileY = muzzleY + (ty - y - muzzleY) * shotT
+        ctx.globalAlpha = Math.max(0, 1 - shotT * 0.7)
+        ctx.strokeStyle = kind.color + 'aa'
+        ctx.lineWidth = frame.types[i] === 1 ? 3 : 2
         ctx.setLineDash(frame.types[i] === 2 ? [2, 6] : [])
         ctx.beginPath()
-        ctx.moveTo(0, -18)
-        ctx.lineTo(tx - x, ty - y)
+        ctx.moveTo(muzzleX, muzzleY)
+        ctx.lineTo(projectileX, projectileY)
         ctx.stroke()
+        ctx.setLineDash([])
+        ctx.globalAlpha = 1
+        ctx.shadowColor = kind.color
+        ctx.shadowBlur = 12
+        ctx.fillStyle = kind.color
+        ctx.beginPath()
+        if (frame.types[i] === 0) {
+          ctx.moveTo(projectileX, projectileY - 5)
+          ctx.lineTo(projectileX + 5, projectileY)
+          ctx.lineTo(projectileX, projectileY + 5)
+          ctx.lineTo(projectileX - 5, projectileY)
+          ctx.closePath()
+        } else if (frame.types[i] === 1) {
+          ctx.rect(projectileX - 3, projectileY - 3, 6, 6)
+        } else {
+          ctx.arc(projectileX, projectileY, 5, 0, Math.PI * 2)
+        }
+        ctx.fill()
+        ctx.shadowBlur = 0
+        if (shotT > 0.82) {
+          ctx.globalAlpha = (shotT - 0.82) / 0.18
+          ctx.strokeStyle = '#fff1c4'
+          ctx.lineWidth = 2
+          ctx.beginPath()
+          ctx.arc(tx - x, ty - y, (shotT - 0.82) * 60, 0, Math.PI * 2)
+          ctx.stroke()
+        }
         ctx.restore()
       }
       ctx.translate(0, recoil)
